@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { useNavigate } from "react-router-dom";
 import { useSessionStore } from "../state/session";
 import { OptionKey, Question } from "../types";
+import { supabase } from "../lib/supabaseClient";
 
 const optionsOrder: OptionKey[] = ["A", "B", "C", "D"];
 
@@ -24,10 +25,16 @@ const Exam = () => {
   const [answers, setAnswers] = useState<Record<string, OptionKey>>({});
   const [timeLeft, setTimeLeft] = useState(45 * 60);
   const [started, setStarted] = useState(false);
+  const [clientId, setClientId] = useState<string | null>(null);
 
   useEffect(() => {
     loadRemote().catch(() => undefined);
   }, [loadRemote]);
+
+  useEffect(() => {
+    const id = localStorage.getItem("cbt-client-id");
+    if (id) setClientId(id);
+  }, []);
 
   useEffect(() => {
     if (!started) return;
@@ -73,16 +80,29 @@ const Exam = () => {
       const id = q.id || `${q.subject}-${q.year}-${idx}`;
       if (answers[id] && q.answer && answers[id] === q.answer) correct += 1;
     });
-    navigate("/results", {
-      state: {
-        score: correct,
-        total: examQuestions.length,
-        answers,
-        questions: examQuestions,
-        subject: "All",
-        topic: "All"
-      }
-    });
+    const payload = {
+      score: correct,
+      total: examQuestions.length,
+      answers,
+      questions: examQuestions,
+      subject: "All",
+      topic: "All"
+    };
+    if (supabase && clientId) {
+      supabase
+        .from("exam_attempts_public")
+        .insert({
+          client_id: clientId,
+          score: correct,
+          total: examQuestions.length,
+          answers,
+          questions: examQuestions,
+          submitted_at: new Date().toISOString()
+        })
+        .then(() => undefined, () => undefined);
+    }
+    localStorage.setItem("cbt-exam-result", JSON.stringify(payload));
+    navigate("/results", { state: payload });
   };
 
   const current = examQuestions[currentIndex];

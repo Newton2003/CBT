@@ -74,6 +74,17 @@ create table if not exists public.practice_sessions_public (
   updated_at timestamptz default now()
 );
 
+-- Public exam attempts for anonymous clients
+create table if not exists public.exam_attempts_public (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid,
+  score int,
+  total int,
+  answers jsonb,
+  questions jsonb,
+  submitted_at timestamptz default now()
+);
+
 -- Policies: only owner can access
 do $$
 begin

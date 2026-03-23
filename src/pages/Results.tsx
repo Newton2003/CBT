@@ -1,6 +1,8 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Question } from "../types";
 import clsx from "clsx";
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
 
 interface ResultState {
   score: number;
@@ -14,9 +16,56 @@ interface ResultState {
 const Results = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const state = (location.state || {}) as ResultState;
+  const [state, setState] = useState<ResultState | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
 
-  if (!state.questions?.length) {
+  useEffect(() => {
+    const cid = localStorage.getItem("cbt-client-id");
+    if (cid) setClientId(cid);
+  }, []);
+
+  useEffect(() => {
+    if (location.state && (location.state as ResultState).questions) {
+      setState(location.state as ResultState);
+      return;
+    }
+    const stored = localStorage.getItem("cbt-exam-result");
+    if (stored) {
+      try {
+        setState(JSON.parse(stored) as ResultState);
+        return;
+      } catch {
+        // ignore parse errors
+      }
+    }
+    setState(null);
+  }, [location.state]);
+
+  useEffect(() => {
+    const fetchLatest = async () => {
+      if (state || !supabase || !clientId) return;
+      const { data } = await supabase
+        .from("exam_attempts_public")
+        .select("score,total,answers,questions,submitted_at")
+        .eq("client_id", clientId)
+        .order("submitted_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        setState({
+          score: data.score,
+          total: data.total,
+          answers: data.answers || {},
+          questions: data.questions || [],
+          subject: "All",
+          topic: "All"
+        });
+      }
+    };
+    fetchLatest();
+  }, [state, clientId]);
+
+  if (!state?.questions?.length) {
     return (
       <div className="workspace">
         <div className="card">
