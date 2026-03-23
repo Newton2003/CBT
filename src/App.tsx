@@ -79,6 +79,15 @@ export default function App() {
   }, [hydrate]);
 
   useEffect(() => {
+    if (userName) setShowNameModal(false);
+  }, [userName]);
+
+  // hide modal once name is hydrated from storage
+  useEffect(() => {
+    if (userName) setShowNameModal(false);
+  }, [userName]);
+
+  useEffect(() => {
     const root = document.documentElement;
     root.setAttribute("data-theme", "light");
     root.style.setProperty("--accent", getAccentHex(accent));
@@ -86,13 +95,18 @@ export default function App() {
 
   useEffect(() => {
     const existing = localStorage.getItem("cbt-client-id");
-    if (existing) {
-      setClientId(existing);
-    } else {
-      const generated = crypto.randomUUID();
-      localStorage.setItem("cbt-client-id", generated);
-      setClientId(generated);
-    }
+    const makeId = () => {
+      if (typeof crypto !== "undefined" && (crypto as any).randomUUID) return (crypto as any).randomUUID();
+      // fallback UUIDv4
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    };
+    const id = existing || makeId();
+    localStorage.setItem("cbt-client-id", id);
+    setClientId(id);
   }, []);
 
   const saveName = async (name: string) => {
@@ -102,28 +116,30 @@ export default function App() {
     }
   };
 
-  // Hydrate practice session from supabase or localStorage
+  // Hydrate practice session from localStorage first, then Supabase if available
   useEffect(() => {
-    const hydrateSession = async () => {
-      const local = localStorage.getItem("cbt-session");
-      if (local) {
-        try {
-          const data = JSON.parse(local);
-          sessionStore.restoreProgress(data.subject || "All", data.topic || "All", data.currentIndex || 0, data.answers || {});
-        } catch {}
-      }
-      if (supabase && clientId) {
-        const { data } = await supabase
-          .from("practice_sessions_public")
-          .select("subject,topic,current_index,answers")
-          .eq("client_id", clientId)
-          .maybeSingle();
-        if (data) {
-          sessionStore.restoreProgress(data.subject || "All", data.topic || "All", data.current_index || 0, data.answers || {});
-        }
+    const local = localStorage.getItem("cbt-session");
+    if (local) {
+      try {
+        const data = JSON.parse(local);
+        sessionStore.restoreProgress(data.subject || "All", data.topic || "All", data.currentIndex || 0, data.answers || {});
+      } catch {}
+    }
+  }, [sessionStore]);
+
+  useEffect(() => {
+    const fetchRemote = async () => {
+      if (!supabase || !clientId) return;
+      const { data } = await supabase
+        .from("practice_sessions_public")
+        .select("subject,topic,current_index,answers")
+        .eq("client_id", clientId)
+        .maybeSingle();
+      if (data) {
+        sessionStore.restoreProgress(data.subject || "All", data.topic || "All", data.current_index || 0, data.answers || {});
       }
     };
-    hydrateSession();
+    fetchRemote();
   }, [clientId, sessionStore]);
 
   // Persist practice session to supabase and localStorage
