@@ -43,10 +43,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   goTo: (idx) => set({ currentIndex: idx }),
   reset: () => set({ currentIndex: 0, answers: {} }),
   replaceQuestions: (questions) =>
-    set({
-      questions: hydrate(questions),
-      currentIndex: 0,
-      answers: {}
+    set((state) => {
+      const keepAnswers = Object.keys(state.answers).length > 0;
+      return {
+        questions: hydrate(questions),
+        currentIndex: keepAnswers ? state.currentIndex : 0,
+        answers: keepAnswers ? state.answers : {}
+      };
     }),
   restoreProgress: (subject, topic, currentIndex, answers) =>
     set({
@@ -61,12 +64,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const [qRes, tRes] = await Promise.all([fetch("/data/questions.json"), fetch("/data/topics.json")]);
     const data = (await qRes.json()) as Question[];
     const topics = (await tRes.json()) as Record<string, string[]>;
+    const current = get();
+    const preservedAnswers = Object.keys(current.answers).length ? current.answers : {};
+    const newQuestions = hydrate(data);
     set({
-      questions: hydrate(data),
+      questions: newQuestions,
       topicsBySubject: topics || {},
       loading: false,
-      currentIndex: 0,
-      answers: {}
+      currentIndex: Math.min(current.currentIndex, Math.max(newQuestions.length - 1, 0)),
+      answers: preservedAnswers
     });
   }
 }));

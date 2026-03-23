@@ -8,7 +8,6 @@ import Results from "./pages/Results";
 import Summary from "./pages/Summary";
 import { usePrefStore, getAccentHex } from "./state/prefs";
 import { useSessionStore } from "./state/session";
-import { supabase } from "./lib/supabaseClient";
 
 type NavProps = {
   userName: string;
@@ -25,9 +24,9 @@ const Nav = ({ userName, bindNameGesture }: NavProps) => {
   return (
     <header className="nav">
       <div className="logo">
-        *
-        <span {...bindNameGesture} style={{ cursor: "pointer" }}>
-          {userName || "CBT"}
+        <span style={{ color: "var(--muted)" }}>Welcome</span>
+        <span {...bindNameGesture} style={{ cursor: "pointer", marginLeft: 2 }}>
+          {userName || "Newt"}
         </span>
         <span className="pill">Soft + Serious</span>
       </div>
@@ -59,10 +58,9 @@ export default function App() {
   const { accent, hydrate, userName, setUserName } = usePrefStore();
   const sessionStore = useSessionStore();
   const [nameDraft, setNameDraft] = useState("");
-  const [showNameModal, setShowNameModal] = useState(!userName);
+  const [showNameModal, setShowNameModal] = useState(false);
   const touchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
-  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const bindNameGesture = {
     onTouchStart: () => {
@@ -80,6 +78,7 @@ export default function App() {
 
   useEffect(() => {
     if (userName) setShowNameModal(false);
+    else setShowNameModal(true);
   }, [userName]);
 
   // hide modal once name is hydrated from storage
@@ -111,9 +110,6 @@ export default function App() {
 
   const saveName = async (name: string) => {
     setUserName(name);
-    if (supabase && clientId) {
-      await supabase.from("profiles_public").upsert({ client_id: clientId, display_name: name });
-    }
   };
 
   // Hydrate practice session from localStorage first, then Supabase if available
@@ -127,22 +123,7 @@ export default function App() {
     }
   }, [sessionStore]);
 
-  useEffect(() => {
-    const fetchRemote = async () => {
-      if (!supabase || !clientId) return;
-      const { data } = await supabase
-        .from("practice_sessions_public")
-        .select("subject,topic,current_index,answers")
-        .eq("client_id", clientId)
-        .maybeSingle();
-      if (data) {
-        sessionStore.restoreProgress(data.subject || "All", data.topic || "All", data.current_index || 0, data.answers || {});
-      }
-    };
-    fetchRemote();
-  }, [clientId, sessionStore]);
-
-  // Persist practice session to supabase and localStorage
+  // Persist practice session to localStorage only
   useEffect(() => {
     const unsub = useSessionStore.subscribe((state) => {
       const payload = {
@@ -152,24 +133,9 @@ export default function App() {
         answers: state.answers
       };
       localStorage.setItem("cbt-session", JSON.stringify(payload));
-      if (!supabase || !clientId) return;
-      if (syncTimer.current) clearTimeout(syncTimer.current);
-      syncTimer.current = setTimeout(async () => {
-        await supabase.from("practice_sessions_public").upsert({
-          client_id: clientId,
-          subject: payload.subject,
-          topic: payload.topic,
-          current_index: payload.currentIndex,
-          answers: payload.answers,
-          updated_at: new Date().toISOString()
-        });
-      }, 700);
     });
-    return () => {
-      if (syncTimer.current) clearTimeout(syncTimer.current);
-      unsub();
-    };
-  }, [clientId]);
+    return () => unsub();
+  }, []);
 
   return (
     <BrowserRouter>

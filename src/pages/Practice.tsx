@@ -10,6 +10,7 @@ const Practice = () => {
   const { questions, topicsBySubject, subject, topic, currentIndex, answers, setFilters, select, goTo, reset, loadRemote, loading } = useSessionStore();
   const [jumpValue, setJumpValue] = useState("");
   const [topicsOpen, setTopicsOpen] = useState(false);
+  const [passageOpen, setPassageOpen] = useState(false);
 
   useEffect(() => {
     loadRemote().catch(() => undefined);
@@ -32,7 +33,12 @@ const Practice = () => {
 
   useEffect(() => {
     setTopicsOpen(false);
+    setPassageOpen(false);
   }, [subject]);
+
+  useEffect(() => {
+    setPassageOpen(false);
+  }, [currentQuestion?.id]);
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers]);
   const score = useMemo(() => {
@@ -66,6 +72,47 @@ const Practice = () => {
 
   const resetSession = () => {
     reset();
+  };
+
+  const renderQuestion = (text: string) => {
+    const map: Record<string, string> = {
+      think: "th",
+      phone: "ph",
+      photo: "ph",
+      rough: "gh",
+      ring: "ng",
+      debt: "b",
+      bury: "u",
+      beat: "ea",
+      court: "ou",
+      cat: "a",
+      food: "oo",
+      sun: "u",
+      chair: "ch",
+      thin: "th",
+      said: "ai",
+      book: "oo",
+      goat: "oa",
+      vine: "v",
+      shoe: "oe",
+      uncle: "ng"
+    };
+
+    const pattern = /(underlined letters?:\s*)([A-Za-z']+)/i;
+    return text.replace(pattern, (_match, label, wordRaw) => {
+      const word = wordRaw.toLowerCase();
+      const target = map[word];
+      if (target) {
+        const idx = word.indexOf(target);
+        if (idx >= 0) {
+          const before = wordRaw.slice(0, idx);
+          const mid = wordRaw.slice(idx, idx + target.length);
+          const after = wordRaw.slice(idx + target.length);
+          return `${label}${before}<u>${mid}</u>${after}`;
+        }
+      }
+      return `${label}<u>${wordRaw}</u>`;
+    });
   };
 
   if (loading || !questions.length) {
@@ -134,7 +181,30 @@ const Practice = () => {
               <h3 className="headline" style={{ fontSize: 22, margin: "6px 0" }}>
                 {currentQuestion ? `${currentQuestion.subject} · ${currentQuestion.year}` : "Choose a subject"}
               </h3>
-              <p className="subtle">{currentQuestion?.question || "Select subject/topic to load questions."}</p>
+              {currentQuestion?.passage && (
+                <div className="card muted" style={{ margin: "8px 0" }}>
+                  <div className="flex between wrap" style={{ gap: 8 }}>
+                    <div>
+                      <div className="badge">Passage</div>
+                      {currentQuestion.passageTitle && <p className="subtle" style={{ margin: "4px 0 0" }}>{currentQuestion.passageTitle}</p>}
+                    </div>
+                    <button className="chip ghost" onClick={() => setPassageOpen((v) => !v)}>
+                      {passageOpen ? "Hide passage" : "Read more"}
+                    </button>
+                  </div>
+                  <p className="subtle" style={{ marginTop: 6 }}>
+                    {passageOpen
+                      ? currentQuestion.passage
+                      : `${currentQuestion.passage.slice(0, 200)}${currentQuestion.passage.length > 200 ? "…" : ""}`}
+                  </p>
+                </div>
+              )}
+              <p
+                className="subtle"
+                dangerouslySetInnerHTML={{
+                  __html: currentQuestion?.question ? renderQuestion(currentQuestion.question) : "Select subject/topic to load questions."
+                }}
+              />
             </div>
             <div className="pill">Topic: {currentQuestion?.topic || "-"}</div>
           </div>

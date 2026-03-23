@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSessionStore } from "../state/session";
 import clsx from "clsx";
 
@@ -17,10 +17,22 @@ const Bar = ({ label, value, total }: { label: string; value: number; total: num
 
 const Summary = () => {
   const { questions, answers, loadRemote } = useSessionStore();
+  const [daily, setDaily] = useState<Array<{ date: string; attempted: number; correct: number }>>([]);
 
   useEffect(() => {
     loadRemote().catch(() => undefined);
   }, [loadRemote]);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("cbt-daily-stats");
+    if (raw) {
+      try {
+        setDaily(JSON.parse(raw));
+      } catch {
+        setDaily([]);
+      }
+    }
+  }, []);
 
   const stats = useMemo(() => {
     const perSubject: Record<string, { answered: number; total: number; correct: number }> = {};
@@ -50,6 +62,8 @@ const Summary = () => {
     .filter((d) => d.value > 0);
 
   const totalAnsweredForPie = pieData.reduce((sum, d) => sum + d.value, 0);
+  const dailySorted = [...daily].sort((a, b) => a.date.localeCompare(b.date)).slice(-10);
+  const maxAttempt = Math.max(1, ...dailySorted.map((d) => d.attempted));
 
   const Pie = () => {
     const r = 40;
@@ -149,6 +163,32 @@ const Summary = () => {
           ))}
           {!subjectEntries.length && <p className="subtle">No data yet. Answer some questions in practice.</p>}
         </div>
+      </div>
+
+      <div className="card">
+        <div className="flex between wrap" style={{ marginBottom: 8 }}>
+          <div className="badge">Last 10 days</div>
+          <span className="pill-ghost">Attempted per day</span>
+        </div>
+        {dailySorted.length ? (
+          <div className="bar-list">
+            {dailySorted.map((d) => {
+              const pct = (d.attempted / maxAttempt) * 100;
+              const accuracy = d.attempted ? Math.round((d.correct / d.attempted) * 100) : 0;
+              return (
+                <div key={d.date} className="bar-row">
+                  <div className="bar-label">{d.date}</div>
+                  <div className="bar-track">
+                    <div className="bar-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="bar-value">{d.attempted} q | {accuracy}%</div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="subtle" style={{ margin: 0 }}>No activity recorded yet. Complete an exam to see trend.</p>
+        )}
       </div>
     </div>
   );

@@ -2,7 +2,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Question } from "../types";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
 
 interface ResultState {
   score: number;
@@ -11,18 +10,13 @@ interface ResultState {
   questions: Question[];
   subject: string;
   topic: string;
+  weakTopics?: Record<string, number>;
 }
 
 const Results = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [state, setState] = useState<ResultState | null>(null);
-  const [clientId, setClientId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const cid = localStorage.getItem("cbt-client-id");
-    if (cid) setClientId(cid);
-  }, []);
 
   useEffect(() => {
     if (location.state && (location.state as ResultState).questions) {
@@ -41,29 +35,7 @@ const Results = () => {
     setState(null);
   }, [location.state]);
 
-  useEffect(() => {
-    const fetchLatest = async () => {
-      if (state || !supabase || !clientId) return;
-      const { data } = await supabase
-        .from("exam_attempts_public")
-        .select("score,total,answers,questions,submitted_at")
-        .eq("client_id", clientId)
-        .order("submitted_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data) {
-        setState({
-          score: data.score,
-          total: data.total,
-          answers: data.answers || {},
-          questions: data.questions || [],
-          subject: "All",
-          topic: "All"
-        });
-      }
-    };
-    fetchLatest();
-  }, [state, clientId]);
+  // No remote fetch; rely on nav state or localStorage
 
   if (!state?.questions?.length) {
     return (
@@ -78,6 +50,7 @@ const Results = () => {
   }
 
   const percent = Math.round((state.score / state.total) * 100);
+  const weakEntries = Object.entries(state.weakTopics || {}).sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="workspace">
@@ -95,10 +68,46 @@ const Results = () => {
         </div>
       </div>
 
-      <div className="card muted">
-        <p className="subtle" style={{ margin: 0 }}>
-          Need to improve? Jump back to Practice to focus on weak topics, or retake the mock exam.
-        </p>
+      <div className="grid cols-3">
+        <div className="card muted">
+          <div className="badge">Weak topics</div>
+          {weakEntries.length ? (
+            <ul className="subtle" style={{ marginTop: 8, paddingLeft: 18 }}>
+              {weakEntries.map(([topic, count]) => (
+                <li key={topic}>
+                  {topic}: {count} wrong
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="subtle" style={{ margin: 0 }}>No weak topics detected. Great job!</p>
+          )}
+        </div>
+        <div className="card muted">
+          <div className="badge">Next steps</div>
+          <p className="subtle" style={{ margin: "6px 0" }}>Practice weak topics from above, then retake a shorter exam.</p>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="badge">Question review</div>
+        <div className="nav-grid">
+          {state.questions.map((q, idx) => {
+            const id = q.id || `${q.subject}-${q.year}-${idx}`;
+            const chosen = state.answers[id];
+            const correct = chosen && q.answer && chosen === q.answer;
+            return (
+              <div key={id} className={clsx("review-chip", { correct, empty: !chosen })}>
+                <div className="badge" style={{ marginBottom: 6 }}>#{idx + 1} · {q.subject}</div>
+                <p className="subtle" style={{ margin: 0 }}>{q.question.slice(0, 140)}...</p>
+                <p className="subtle" style={{ margin: "6px 0 0", fontWeight: 700 }}>
+                  {chosen ? `Your answer: ${chosen} ${q.answer ? `(Correct: ${q.answer})` : ""}` : "Not answered"}
+                </p>
+                {q.explanation && <p className="subtle" style={{ margin: "6px 0 0" }}>{q.explanation}</p>}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

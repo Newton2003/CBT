@@ -6,6 +6,8 @@ export interface Question {
   topic: string;
   year: number;
   question: string;
+  passage?: string;
+  passageTitle?: string;
   options: Record<OptionKey, string>;
   answer: OptionKey | "";
   explanation: string;

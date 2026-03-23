@@ -3,7 +3,6 @@ import clsx from "clsx";
 import { useNavigate } from "react-router-dom";
 import { useSessionStore } from "../state/session";
 import { OptionKey, Question } from "../types";
-import { supabase } from "../lib/supabaseClient";
 
 const optionsOrder: OptionKey[] = ["A", "B", "C", "D"];
 
@@ -25,16 +24,11 @@ const Exam = () => {
   const [answers, setAnswers] = useState<Record<string, OptionKey>>({});
   const [timeLeft, setTimeLeft] = useState(45 * 60);
   const [started, setStarted] = useState(false);
-  const [clientId, setClientId] = useState<string | null>(null);
+  const [passageOpen, setPassageOpen] = useState(false);
 
   useEffect(() => {
     loadRemote().catch(() => undefined);
   }, [loadRemote]);
-
-  useEffect(() => {
-    const id = localStorage.getItem("cbt-client-id");
-    if (id) setClientId(id);
-  }, []);
 
   useEffect(() => {
     if (!started) return;
@@ -66,19 +60,67 @@ const Exam = () => {
     setAnswers((prev) => ({ ...prev, [q.id || `${q.subject}-${q.year}-${currentIndex}`]: opt }));
   };
 
-  const goto = (idx: number) => setCurrentIndex(Math.max(0, Math.min(idx, examQuestions.length - 1)));
+  const goto = (idx: number) => {
+    setPassageOpen(false);
+    setCurrentIndex(Math.max(0, Math.min(idx, examQuestions.length - 1)));
+  };
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, "0");
     const s = (secs % 60).toString().padStart(2, "0");
     return `${m}:${s}`;
   };
 
+  const renderQuestion = (text: string) => {
+    const map: Record<string, string> = {
+      think: "th",
+      phone: "ph",
+      photo: "ph",
+      rough: "gh",
+      ring: "ng",
+      debt: "b",
+      bury: "u",
+      beat: "ea",
+      court: "ou",
+      cat: "a",
+      food: "oo",
+      sun: "u",
+      chair: "ch",
+      thin: "th",
+      said: "ai",
+      book: "oo",
+      goat: "oa",
+      vine: "v",
+      shoe: "oe",
+      uncle: "ng"
+    };
+
+    const pattern = /(underlined letters?:\s*)([A-Za-z']+)/i;
+    return text.replace(pattern, (_match, label, wordRaw) => {
+      const word = wordRaw.toLowerCase();
+      const target = map[word];
+      if (target) {
+        const idx = word.indexOf(target);
+        if (idx >= 0) {
+          const before = wordRaw.slice(0, idx);
+          const mid = wordRaw.slice(idx, idx + target.length);
+          const after = wordRaw.slice(idx + target.length);
+          return `${label}${before}<u>${mid}</u>${after}`;
+        }
+      }
+      return `${label}<u>${wordRaw}</u>`;
+    });
+  };
+
   const submitExam = () => {
     const answeredIds = Object.keys(answers);
     let correct = 0;
+    const weakTopics: Record<string, number> = {};
     examQuestions.forEach((q, idx) => {
       const id = q.id || `${q.subject}-${q.year}-${idx}`;
       if (answers[id] && q.answer && answers[id] === q.answer) correct += 1;
+      else {
+        weakTopics[q.topic] = (weakTopics[q.topic] || 0) + 1;
+      }
     });
     const payload = {
       score: correct,
@@ -86,21 +128,30 @@ const Exam = () => {
       answers,
       questions: examQuestions,
       subject: "All",
-      topic: "All"
+      topic: "All",
+      weakTopics
     };
-    if (supabase && clientId) {
-      supabase
-        .from("exam_attempts_public")
-        .insert({
-          client_id: clientId,
-          score: correct,
-          total: examQuestions.length,
-          answers,
-          questions: examQuestions,
-          submitted_at: new Date().toISOString()
-        })
-        .then(() => undefined, () => undefined);
+
+    // update daily stats
+    const today = new Date().toISOString().slice(0, 10);
+    const statsRaw = localStorage.getItem("cbt-daily-stats");
+    let stats: Array<{ date: string; attempted: number; correct: number }> = [];
+    if (statsRaw) {
+      try {
+        stats = JSON.parse(statsRaw);
+      } catch {
+        stats = [];
+      }
     }
+    const existing = stats.find((s) => s.date === today);
+    if (existing) {
+      existing.attempted += examQuestions.length;
+      existing.correct += correct;
+    } else {
+      stats.push({ date: today, attempted: examQuestions.length, correct });
+    }
+    localStorage.setItem("cbt-daily-stats", JSON.stringify(stats));
+
     localStorage.setItem("cbt-exam-result", JSON.stringify(payload));
     navigate("/results", { state: payload });
   };
@@ -115,7 +166,6 @@ const Exam = () => {
           <h2 className="headline" style={{ fontSize: 26, margin: "8px 0" }}>45-minute CBT simulation.</h2>
           <p className="subtle">60 syllabus-aligned questions. One at a time. Auto-submit at 00:00.</p>
         </div>
-        <div className="pill-ghost">Timer: {formatTime(timeLeft)}</div>
       </div>
 
       <div className="flex wrap gap">
@@ -128,9 +178,35 @@ const Exam = () => {
                   <h3 className="headline" style={{ fontSize: 22, margin: "6px 0" }}>
                     {current.subject} · {current.year}
                   </h3>
-                  <p className="subtle">{current.question}</p>
+                  {current.passage && (
+                    <div className="card muted" style={{ margin: "8px 0" }}>
+                      <div className="flex between wrap" style={{ gap: 8 }}>
+                        <div>
+                          <div className="badge">Passage</div>
+                          {current.passageTitle && <p className="subtle" style={{ margin: "4px 0 0" }}>{current.passageTitle}</p>}
+                        </div>
+                        <button className="chip ghost" onClick={() => setPassageOpen((v) => !v)}>
+                          {passageOpen ? "Hide passage" : "Read more"}
+                        </button>
+                      </div>
+                      <p className="subtle" style={{ marginTop: 6 }}>
+                        {passageOpen
+                          ? current.passage
+                          : `${current.passage.slice(0, 220)}${current.passage.length > 220 ? "?" : ""}`}
+                      </p>
+                    </div>
+                  )}
+                  <p
+                    className="subtle"
+                    dangerouslySetInnerHTML={{
+                      __html: renderQuestion(current.question)
+                    }}
+                  />
                 </div>
-                <div className="pill">Topic: {current.topic}</div>
+                <div className="chips" style={{ alignItems: "center" }}>
+                  <div className="pill">Topic: {current.topic}</div>
+                  <span className="pill-ghost" style={{ fontWeight: 700 }}>Timer: {formatTime(timeLeft)}</span>
+                </div>
               </div>
 
               <div className="options">
@@ -155,18 +231,23 @@ const Exam = () => {
             <div className="chips">
               <div className="pill-ghost">Selected: {Object.keys(answers).length}/{examQuestions.length || 0}</div>
             </div>
-            <div className="chips">
-              {!started && (
-                <button className="cta" onClick={startExam} disabled={!availableQuestions.length}>Start exam</button>
-              )}
-              {started && (
-                <>
+          </div>
+
+          <div className="flex between wrap" style={{ marginTop: 10, gap: 10 }}>
+            {!started && (
+              <button className="cta" onClick={startExam} disabled={!availableQuestions.length}>Start exam</button>
+            )}
+            {started && (
+              <>
+                <div className="chips">
                   <button className="cta secondary" onClick={() => goto(Math.max(0, currentIndex - 1))} disabled={currentIndex === 0}>Prev</button>
                   <button className="cta secondary" onClick={() => goto(Math.min(examQuestions.length - 1, currentIndex + 1))}>Next</button>
+                </div>
+                <div style={{ marginLeft: "auto" }}>
                   <button className="cta" onClick={submitExam}>Submit</button>
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
