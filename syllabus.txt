@@ -1,0 +1,200 @@
+{
+  "syllabi": [
+    {
+      "subject": "Christian Religious Studies",
+      "sections": [
+        {
+          "name": "SECTION A: Themes from Creation to the Division of the Kingdom",
+          "topics": [
+            "The Sovereignty of God (Gen. 1 and 2)",
+            "The Covenant (Noah, Abraham, Israel, and the New Covenant)",
+            "Leadership Qualities (Joseph, Moses, Joshua, and the Judges)",
+            "Divine Providence, Guidance and Protection",
+            "Parental Responsibility (Eli, Samuel, David, and Asa)",
+            "Obedience and Disobedience (Abraham, Hebrew Youths, David, Adam, Saul)",
+            "A man after God's own heart (Early life and repentance of David)",
+            "Decision Making (Saul, Solomon, and Rehoboam)"
+          ]
+        },
+        {
+          "name": "SECTION B: Themes from the Division of the Kingdom to the Return from Exile and the Prophets",
+          "topics": [
+            "Greed and its effects (Ahab and Gehazi)",
+            "The Supremacy of God (Elijah on Mount Carmel)",
+            "Religious reforms in Judah (Josiah)",
+            "Concern for Judah (The fall of Jerusalem, Nehemiah, and Ezra)",
+            "Faith, Courage and Protection (Daniel and the three Hebrew youths)",
+            "God's message to Nineveh (Jonah)",
+            "Social justice, True religion and Divine love (Amos and Hosea)",
+            "Holiness and Divine call (Isaiah, Ezekiel, and Jeremiah)",
+            "Punishment and Hope (Jeremiah and Ezekiel)"
+          ]
+        },
+        {
+          "name": "SECTION C: Themes from the four Gospels and Acts of the Apostles",
+          "topics": [
+            "The birth and early life of Jesus",
+            "The baptism and temptation of Jesus",
+            "Discipleship (The call and demands)",
+            "Miracles (Nature, Resuscitation, Healing, and Exorcism)",
+            "The Parables (Kingdom, Love, Wealth, and Prayer)",
+            "Sermon on the Mount",
+            "Mission of the disciples (The twelve and the seventy)",
+            "The Great Confession",
+            "The Transfiguration",
+            "The Triumphal Entry and the cleansing of the Temple",
+            "The Last Supper",
+            "The trials and the death of Jesus",
+            "Resurrection, appearances and ascension of Jesus",
+            "Jesus' teachings about Himself (Bread of Life, Light of the World, etc.)",
+            "Love (God's love and love for one another)",
+            "Fellowship in the Early Church (Communal living)",
+            "The Holy Spirit and the mission of the Church",
+            "Opposition to the Gospel message (Persecution of Peter, John, Stephen, and Paul)",
+            "Mission to the Gentiles (Conversion of Saul and Cornelius, Council of Jerusalem)"
+          ]
+        },
+        {
+          "name": "SECTION D: Themes from selected Epistles",
+          "topics": [
+            "Justification by Faith",
+            "The Law and Grace",
+            "New life in Christ",
+            "Christians as joint heirs with Christ",
+            "Humility and Forgiveness",
+            "Spiritual gifts",
+            "Christian Giving",
+            "Civic responsibility",
+            "Dignity of labour",
+            "The second coming of Christ",
+            "Impartiality and Effective prayer",
+            "Christian living in the community",
+            "Corruption and Sexual Immorality"
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "Government",
+      "parts": [
+        {
+          "name": "PART 1: ELEMENTS OF GOVERNMENT",
+          "topics": [
+            "Definition and Scope of Government",
+            "Basic Concepts (Power, Sovereignty, State, Nation, etc.)",
+            "Forms of Government (Monarchy, Democracy, etc.)",
+            "Arms of Government (Legislature, Executive, Judiciary)",
+            "Structures of Governance (Unitary, Federal, Confederal)",
+            "Systems of Governance (Presidential, Parliamentary, Monarchical)",
+            "Political Ideologies (Capitalism, Socialism, etc.)",
+            "Constitution (Types and Functions)",
+            "Principles of Democratic Government (Rule of Law, Separation of Powers)",
+            "Processes of Legislation",
+            "Citizenship (Rights and Duties)",
+            "The Electoral Process and Systems",
+            "Political Parties and Party Systems",
+            "Pressure Groups and Public Opinion",
+            "The Civil Service/Public Service"
+          ]
+        },
+        {
+          "name": "PART II: POLITICAL DEVELOPMENT IN NIGERIA",
+          "topics": [
+            "Pre-colonial Polities (Hausa/Fulani, Igbo, Yoruba, etc.)",
+            "Imperialist Penetration (British and French Policies)",
+            "Process of Decolonization (Nationalism and Leaders)",
+            "Constitutional Development (Clifford to Independence 1960)",
+            "Post-Independence Constitutions (1963, 1979, 1989, 1999)",
+            "Institutions of Government and Public Commissions",
+            "Political Parties in Post-Independence Nigeria",
+            "Structure and Workings of Nigerian Federalism",
+            "Public Corporations, Parastatals, and Privatization",
+            "Local Government Administration and Reforms",
+            "The Military in Nigerian Politics"
+          ]
+        },
+        {
+          "name": "PART III & IV: FOREIGN POLICY AND INTERNATIONAL ORGANIZATIONS",
+          "topics": [
+            "Nigeria's Foreign Policy (Objectives and Determinants)",
+            "Relations with African Countries (NEPAD and AU)",
+            "Nigeria in International Organizations (UN, Commonwealth, ECOWAS, OPEC)",
+            "International Organizations (Origin, Structure, and Achievements)"
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "Literature in English",
+      "genres": [
+        {
+          "name": "Drama",
+          "topics": [
+            "Types (Tragedy, Comedy, Tragicomedy, Melodrama, etc.)",
+            "Dramatic Techniques (Characterization, Soliloquy, Figures of Speech)",
+            "Interpretation (Theme, Plot, Setting, Socio-political context)"
+          ]
+        },
+        {
+          "name": "Prose",
+          "topics": [
+            "Types (Fiction, Non-fiction, Faction)",
+            "Narrative Techniques (Point of view, Stream of consciousness)",
+            "Characterization (Round, Flat, Foil, etc.)",
+            "Textual Analysis (Theme, Plot, Setting)"
+          ]
+        },
+        {
+          "name": "Poetry",
+          "topics": [
+            "Types (Sonnet, Ode, Elegy, Epic, etc.)",
+            "Poetic Devices (Imagery, Sound, Diction, Persona)",
+            "Appreciation (Thematic preoccupation, Style)"
+          ]
+        },
+        {
+          "name": "General",
+          "topics": [
+            "General Literary Terms and Principles",
+            "Literary Appreciation (Unseen passages)"
+          ]
+        }
+      ]
+    },
+    {
+      "subject": "Use of English",
+      "sections": [
+        {
+          "name": "SECTION A: Comprehension and Summary",
+          "topics": [
+            "Description, Narration, Exposition, Argumentation",
+            "Cloze Test",
+            "Reading Text",
+            "Synthesis of Ideas"
+          ]
+        },
+        {
+          "name": "SECTION B: Lexis and Structure",
+          "topics": [
+            "Synonyms and Antonyms",
+            "Clause and Sentence Patterns",
+            "Word classes and functions",
+            "Mood, Tense, Aspect, Number, Concord",
+            "Mechanics (Spelling and Punctuation)",
+            "Ordinary, Figurative, and Idiomatic Usage"
+          ]
+        },
+        {
+          "name": "SECTION C: Oral Forms",
+          "topics": [
+            "Vowels (Monophthongs, Diphthongs, Triphthongs)",
+            "Consonants and Clusters",
+            "Rhymes and Homophones",
+            "Word Stress (Monosyllabic and Polysyllabic)",
+            "Emphatic Stress"
+          ]
+        }
+      ]
+    }
+  ]
+}
