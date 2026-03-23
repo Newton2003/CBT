@@ -27,6 +27,13 @@ create table if not exists public.practice_sessions (
   updated_at timestamptz default now()
 );
 
+-- Public profiles for anonymous clients (no auth)
+create table if not exists public.profiles_public (
+  client_id uuid primary key,
+  display_name text,
+  created_at timestamptz default now()
+);
+
 -- Exam attempts (optional)
 create table if not exists public.exam_attempts (
   id uuid primary key default gen_random_uuid(),
@@ -55,6 +62,17 @@ alter table public.preferences enable row level security;
 alter table public.practice_sessions enable row level security;
 alter table public.exam_attempts enable row level security;
 alter table public.reports enable row level security;
+-- leave profiles_public open (RLS off) for anonymous inserts
+
+-- Public practice sessions for anonymous clients
+create table if not exists public.practice_sessions_public (
+  client_id uuid primary key,
+  subject text,
+  topic text,
+  current_index int default 0,
+  answers jsonb default '{}'::jsonb,
+  updated_at timestamptz default now()
+);
 
 -- Policies: only owner can access
 do $$

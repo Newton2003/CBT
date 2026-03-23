@@ -1,16 +1,14 @@
 import { useEffect, useState, useRef } from "react";
-import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Practice from "./pages/Practice";
 import Exam from "./pages/Exam";
 import Results from "./pages/Results";
 import Summary from "./pages/Summary";
-import Auth from "./pages/Auth";
 import { usePrefStore, getAccentHex } from "./state/prefs";
-import { supabase } from "./lib/supabaseClient";
-import type { Session } from "@supabase/supabase-js";
 import { useSessionStore } from "./state/session";
+import { supabase } from "./lib/supabaseClient";
 
 type NavProps = {
   userName: string;
@@ -19,11 +17,9 @@ type NavProps = {
     onTouchEnd: () => void;
     onDoubleClick: () => void;
   };
-  email?: string;
-  signOut: () => void;
 };
 
-const Nav = ({ userName, bindNameGesture, email, signOut }: NavProps) => {
+const Nav = ({ userName, bindNameGesture }: NavProps) => {
   const location = useLocation();
 
   return (
@@ -54,11 +50,6 @@ const Nav = ({ userName, bindNameGesture, email, signOut }: NavProps) => {
       </div>
       <div className="chips wrap">
         <span className="pill-ghost" style={{ borderStyle: "solid" }}>Mode: Light</span>
-        {email && (
-          <button className="chip" onClick={signOut}>
-            Sign out ({email})
-          </button>
-        )}
       </div>
     </header>
   );
@@ -68,29 +59,20 @@ export default function App() {
   const { accent, hydrate, userName, setUserName } = usePrefStore();
   const sessionStore = useSessionStore();
   const [nameDraft, setNameDraft] = useState("");
-  const [showNameModal, setShowNameModal] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(!userName);
   const touchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [authChecking, setAuthChecking] = useState(true);
+  const [clientId, setClientId] = useState<string | null>(null);
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [supabaseReady] = useState(!!supabase);
-
-  const openNameEditor = () => setShowNameModal(true);
-  const closeNameEditor = () => setShowNameModal(false);
 
   const bindNameGesture = {
     onTouchStart: () => {
-      touchTimer.current = setTimeout(() => {
-        openNameEditor();
-      }, 700);
+      touchTimer.current = setTimeout(() => setShowNameModal(true), 700);
     },
     onTouchEnd: () => {
       if (touchTimer.current) clearTimeout(touchTimer.current);
-    }
+    },
+    onDoubleClick: () => setShowNameModal(true)
   };
-
-  // expose to Nav via context-less hook-like object
-  const useNameActions = () => ({ openNameEditor, bindNameGesture });
 
   useEffect(() => {
     hydrate();
@@ -103,110 +85,80 @@ export default function App() {
   }, [accent]);
 
   useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        setSession(data.session);
-        fetchProfileName(data.session.user.id);
-        fetchUserState(data.session.user.id);
-      }
-      setAuthChecking(false);
-    });
-    const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
-      setSession(newSession);
-      if (newSession) {
-        fetchProfileName(newSession.user.id);
-        fetchUserState(newSession.user.id);
-      }
-      setAuthChecking(false);
-    });
-    return () => {
-      data.subscription.unsubscribe();
-    };
+    const existing = localStorage.getItem("cbt-client-id");
+    if (existing) {
+      setClientId(existing);
+    } else {
+      const generated = crypto.randomUUID();
+      localStorage.setItem("cbt-client-id", generated);
+      setClientId(generated);
+    }
   }, []);
-
-  const fetchProfileName = async (userId: string) => {
-    if (!supabase) return;
-    const { data } = await supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle();
-    if (data?.display_name) setUserName(data.display_name);
-    else setShowNameModal(true);
-  };
-
-  const fetchUserState = async (userId: string) => {
-    if (!supabase) return;
-    // preferences
-    const { data: pref } = await supabase.from("preferences").select("last_subject,last_topic").eq("user_id", userId).maybeSingle();
-    if (pref?.last_subject) {
-      sessionStore.setFilters(pref.last_subject, pref.last_topic || "All");
-    }
-    // practice session
-    const { data: sess } = await supabase
-      .from("practice_sessions")
-      .select("subject,topic,current_index,answers")
-      .eq("user_id", userId)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (sess) {
-      sessionStore.restoreProgress(sess.subject || "All", sess.topic || "All", sess.current_index || 0, sess.answers || {});
-    }
-  };
 
   const saveName = async (name: string) => {
     setUserName(name);
-    if (session && supabase) {
-      await supabase.from("profiles").upsert({ id: session.user.id, display_name: name });
+    if (supabase && clientId) {
+      await supabase.from("profiles_public").upsert({ client_id: clientId, display_name: name });
     }
   };
 
+  // Hydrate practice session from supabase or localStorage
   useEffect(() => {
-    if (!session || !supabase) return;
+    const hydrateSession = async () => {
+      const local = localStorage.getItem("cbt-session");
+      if (local) {
+        try {
+          const data = JSON.parse(local);
+          sessionStore.restoreProgress(data.subject || "All", data.topic || "All", data.currentIndex || 0, data.answers || {});
+        } catch {}
+      }
+      if (supabase && clientId) {
+        const { data } = await supabase
+          .from("practice_sessions_public")
+          .select("subject,topic,current_index,answers")
+          .eq("client_id", clientId)
+          .maybeSingle();
+        if (data) {
+          sessionStore.restoreProgress(data.subject || "All", data.topic || "All", data.current_index || 0, data.answers || {});
+        }
+      }
+    };
+    hydrateSession();
+  }, [clientId, sessionStore]);
+
+  // Persist practice session to supabase and localStorage
+  useEffect(() => {
     const unsub = useSessionStore.subscribe((state) => {
-      const newState = {
+      const payload = {
         subject: state.subject,
         topic: state.topic,
         currentIndex: state.currentIndex,
         answers: state.answers
       };
+      localStorage.setItem("cbt-session", JSON.stringify(payload));
+      if (!supabase || !clientId) return;
       if (syncTimer.current) clearTimeout(syncTimer.current);
       syncTimer.current = setTimeout(async () => {
-        if (!session) return;
-        await supabase.from("preferences").upsert({
-          user_id: session.user.id,
-          last_subject: newState.subject,
-          last_topic: newState.topic
-        });
-        await supabase.from("practice_sessions").upsert({
-          user_id: session.user.id,
-          subject: newState.subject,
-          topic: newState.topic,
-          current_index: newState.currentIndex,
-          answers: newState.answers,
+        await supabase.from("practice_sessions_public").upsert({
+          client_id: clientId,
+          subject: payload.subject,
+          topic: payload.topic,
+          current_index: payload.currentIndex,
+          answers: payload.answers,
           updated_at: new Date().toISOString()
         });
-      }, 800);
+      }, 700);
     });
     return () => {
       if (syncTimer.current) clearTimeout(syncTimer.current);
       unsub();
     };
-  }, [session]);
+  }, [clientId]);
 
   return (
     <BrowserRouter>
       <div className="page">
-        {!supabaseReady && (
-          <div className="backdrop">
-            <div className="modal card">
-              <div className="badge">Setup required</div>
-              <p className="subtle">
-                Supabase env vars are missing. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local and restart.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {session && (!userName || showNameModal) && (
+        {showNameModal && (
           <div className="backdrop">
             <div className="modal card">
               <div className="badge">Welcome</div>
@@ -234,37 +186,14 @@ export default function App() {
             </div>
           </div>
         )}
-        <Nav
-          userName={userName}
-          bindNameGesture={{
-            onTouchStart: () => {
-              touchTimer.current = setTimeout(() => setShowNameModal(true), 700);
-            },
-            onTouchEnd: () => {
-              if (touchTimer.current) clearTimeout(touchTimer.current);
-            },
-            onDoubleClick: () => setShowNameModal(true)
-          }}
-          email={session?.user.email}
-          signOut={async () => {
-            if (supabase) await supabase.auth.signOut();
-            setSession(null);
-            setUserName("");
-          }}
-        />
+        <Nav userName={userName} bindNameGesture={bindNameGesture} />
         <Routes>
-          <Route
-            path="/auth"
-            element={
-              session ? <Navigate to="/dashboard" replace /> : <Auth supabaseReady={supabaseReady} authChecking={authChecking} />
-            }
-          />
-          <Route path="/" element={session ? <Landing /> : <Navigate to="/auth" replace />} />
-          <Route path="/dashboard" element={session ? <Dashboard /> : <Navigate to="/auth" replace />} />
-          <Route path="/practice" element={session ? <Practice /> : <Navigate to="/auth" replace />} />
-          <Route path="/exam" element={session ? <Exam /> : <Navigate to="/auth" replace />} />
-          <Route path="/results" element={session ? <Results /> : <Navigate to="/auth" replace />} />
-          <Route path="/summary" element={session ? <Summary /> : <Navigate to="/auth" replace />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/practice" element={<Practice />} />
+          <Route path="/exam" element={<Exam />} />
+          <Route path="/results" element={<Results />} />
+          <Route path="/summary" element={<Summary />} />
         </Routes>
       </div>
     </BrowserRouter>
